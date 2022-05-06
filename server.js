@@ -7,40 +7,46 @@ const koaBody = require('koa-body');
 const app = new Koa();
 
 app.use(cors());
-app.use(koaBody({json: true}));
+app.use(koaBody({ json: true }));
 
-let posts = [];
+let posts = [
+];
 let nextId = 1;
 
 const router = new Router();
 
 router.get('/posts', async (ctx, next) => {
+  ctx.response.body = posts;
+});
+
+router.post('/posts', async (ctx, next) => {
+  const { id, content } = JSON.parse(ctx.request.body);
+
+  if (posts.some((post) => post.id == id)) {
+    posts = posts.map((o) => (o.id !== id ? o : { ...o, content: content }));
+    ctx.response.status = 200;
     ctx.response.body = posts;
-    // console.log('notes из ОТПРАВИТЬ []', notes);
-    // ctx.response.body = JSON.stringify(notes);
 
+    return;
+  }
+
+  posts.push({
+    ...JSON.parse(ctx.request.body),
+    id: nextId++,
+    created: Date.now(),
+  });
+  ctx.response.status = 200;
+ ctx.response.body = posts;
 });
 
-router.post('/posts', async(ctx, next) => {
-    const {id, content} = ctx.request.body;
-
-    if (id !== 0) {
-        posts = posts.map(o => o.id !== id ? o : {...o, content: content});
-        ctx.response.status = 204;
-        return;
-    }
-
-    posts.push({...ctx.request.body, id: nextId++, created: Date.now()});
-    ctx.response.status = 204;
-});
-
-router.delete('/posts/:id', async(ctx, next) => {
-    const postId = Number(ctx.params.id);
-    const index = posts.findIndex(o => o.id === postId);
-    if (index !== -1) {
-        posts.splice(index, 1);
-    }
-    ctx.response.status = 204;
+router.delete('/posts/:id', async (ctx, next) => {
+  const postId = Number(ctx.params.id.replace(/:/, ''));
+  const index = posts.findIndex((o) => o.id === postId);
+  if (index !== -1) {
+    posts.splice(index, 1);
+  }
+  ctx.response.status = 200;
+  ctx.response.body = posts;
 });
 
 app.use(router.routes()).use(router.allowedMethods());
